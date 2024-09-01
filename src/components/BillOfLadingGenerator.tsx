@@ -9,7 +9,8 @@ import { PDFDocument, PDFField, PDFForm, PDFOptionList, PDFCheckBox, PDFTextFiel
 
 interface FormField {
   name: string;
-  type: 'text' | 'date' | 'number';
+  type: 'text' | 'date' | 'number' | 'select' | 'checkbox';
+  options?: string[];
   validationRules: {
     maxLength?: number;
     min?: number;
@@ -18,7 +19,7 @@ interface FormField {
 
 const BillOfLadingGenerator: React.FC = () => {
   const [formFields, setFormFields] = useState<FormField[]>([]);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<Record<string, string | boolean>>({});
   const [pdfDoc, setPdfDoc] = useState<PDFDocument | null>(null);
 
   useEffect(() => {
@@ -39,8 +40,9 @@ const BillOfLadingGenerator: React.FC = () => {
 
       const extractedFields = fields.map(field => {
         const name = field.getName();
-        let type = 'text';
-        let options = [];
+        let type: FormField['type'] = 'text';
+        let options: string[] | undefined;
+        const validationRules: FormField['validationRules'] = {};
 
         if (field instanceof PDFOptionList) {
           type = 'select';
@@ -61,11 +63,11 @@ const BillOfLadingGenerator: React.FC = () => {
           }
         }
 
-        return { name, type, options, validationRules: {} };
+        return { name, type, options, validationRules };
       });
 
       setFormFields(extractedFields);
-      const initialFormData = extractedFields.reduce((acc, field) => {
+      const initialFormData = extractedFields.reduce<Record<string, string | boolean>>((acc, field) => {
         acc[field.name] = field.type === 'checkbox' ? false : '';
         return acc;
       }, {});
@@ -78,22 +80,13 @@ const BillOfLadingGenerator: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
     setFormData(prevState => ({
       ...prevState,
-      [name]: value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
   };
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
 
   const fillPdfTemplate = async () => {
     if (!pdfDoc) return;
@@ -133,13 +126,13 @@ const BillOfLadingGenerator: React.FC = () => {
     }
   };
 
-  const renderField = (field) => {
+  const renderField = (field: FormField) => {
     const { name, type, options, validationRules } = field;
 
-    let inputProps = {
+    let inputProps: React.InputHTMLAttributes<HTMLInputElement | HTMLSelectElement> = {
       id: name,
       name: name,
-      value: formData[name],
+      value: formData[name] as string,
       onChange: handleInputChange,
       required: true,
       ...validationRules
@@ -152,7 +145,7 @@ const BillOfLadingGenerator: React.FC = () => {
             <Label htmlFor={name}>{name}</Label>
             <select {...inputProps} className="w-full border px-2 py-1">
               <option value="">Select an option</option>
-              {options.map((option, index) => (
+              {options?.map((option, index) => (
                 <option key={index} value={option}>
                   {option}
                 </option>
@@ -167,8 +160,8 @@ const BillOfLadingGenerator: React.FC = () => {
               <input
                 type="checkbox"
                 {...inputProps}
-                checked={formData[name]}
-                onChange={(e) => handleInputChange({ target: { name, value: e.target.checked } })}
+                checked={formData[name] as boolean}
+                onChange={(e) => handleInputChange(e as React.ChangeEvent<HTMLInputElement>)}
               />
               <span className="ml-2">{name}</span>
             </label>
@@ -197,6 +190,7 @@ const BillOfLadingGenerator: React.FC = () => {
         );
     }
   };
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
