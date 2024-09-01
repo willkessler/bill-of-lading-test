@@ -327,10 +327,8 @@ const BillOfLadingForm: React.FC = () => {
         </div>
       </div>
 
-      {formFields.map(renderField)}
-
-      <button onClick={fillPdfTemplate} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-        Generate and Download Filled PDF
+      <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+        Submit BOL
       </button>
     </div>
   );
